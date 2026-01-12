@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: server-apis-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: server_apis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - server-apis-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: server-apis-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - server-apis-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: server-apis-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - server-apis-network
+
+volumes:
+  postgres_data:
+
+networks:
+  server-apis-network:
+    driver: bridge

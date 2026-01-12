@@ -1,0 +1,56 @@
+package config
+
+import "os"
+
+type Config struct {
+	Env           string
+	Port          string
+	DatabaseURL   string
+	RedisURL      string
+	RedisPassword string
+	RedisDB       int
+	RabbitMQURL   string
+
+	// External APIs
+	MangoFyAPIURL         string
+	MangoFySecret         string
+	MangoFyAPIKey         string
+	QuantumPayAPIURL      string
+	QuantumPaySecretKey   string
+	QuantumPayProductName string
+	UtmifyAPIURL          string
+	UtmifyToken           string
+	WebhookBaseURL        string
+	CPFAPIUrl             string
+	CPFAPIToken           string
+}
+
+func Load() *Config {
+	return &Config{
+		Env:                 getEnv("ENV", "development"),
+		Port:                getEnv("PORT", "8080"),
+		DatabaseURL:         getEnv("DATABASE_URL", ""),
+		RedisURL:            getEnv("REDIS_URL", "localhost:6379"),
+		RedisPassword:       getEnv("REDIS_PASSWORD", ""),
+		RedisDB:             0,
+		RabbitMQURL:         getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		MangoFyAPIURL:         getEnv("MANGOFY_API_URL", ""),
+		MangoFySecret:         getEnv("MANGOFY_SECRET_KEY", ""),
+		MangoFyAPIKey:         getEnv("MANGOFY_API_KEY", ""),
+		QuantumPayAPIURL:      getEnv("QUANTUMPAY_API_URL", "https://api.quantumpayments.com.br/v1/transactions"),
+		QuantumPaySecretKey:   getEnv("QUANTUMPAY_SECRET_KEY", ""),
+		QuantumPayProductName: getEnv("QUANTUMPAY_PRODUCT_NAME", "Produto"),
+		UtmifyAPIURL:          getEnv("UTMIFY_API_URL", ""),
+		UtmifyToken:           getEnv("UTMIFY_TOKEN", ""),
+		WebhookBaseURL:        getEnv("WEBHOOK_BASE_URL", ""),
+		CPFAPIUrl:             getEnv("CPF_API_URL", "https://searchapi.dnnl.live/consulta"),
+		CPFAPIToken:           getEnv("CPF_API_TOKEN", ""),
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
