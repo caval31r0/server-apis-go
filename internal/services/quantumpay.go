@@ -41,6 +41,11 @@ func (s *QuantumPayService) CreatePayment(ctx context.Context, req *dto.QuantumP
 	// Gera placa aleatória para referência externa
 	placa := s.generatePlaca()
 
+	// Gera dados automaticamente se não fornecidos
+	if err := s.fillMissingData(req); err != nil {
+		log.Printf("⚠️ Erro ao gerar dados automáticos: %v (continuando com dados fornecidos)", err)
+	}
+
 	// Cria customer
 	customer := &models.Customer{
 		Name:     req.Name,
@@ -396,5 +401,47 @@ func getStringOrNull(params map[string]interface{}, key string) interface{} {
 			return str
 		}
 	}
+	return nil
+}
+
+// Preenche dados faltantes automaticamente usando 4devs
+func (s *QuantumPayService) fillMissingData(req *dto.QuantumPayRequest) error {
+	// Verifica se precisa gerar dados
+	needsFakeData := req.Name == "" || req.Email == "" || req.Document == "" || req.Telephone == ""
+
+	if !needsFakeData {
+		return nil // Todos os dados fornecidos
+	}
+
+	log.Println("🔄 Dados incompletos detectados, gerando automaticamente via 5devs...")
+
+	// Gera pessoa fake
+	fakerService := NewFakerService()
+	pessoa, err := fakerService.GerarPessoa()
+	if err != nil {
+		return fmt.Errorf("erro ao gerar dados fake: %w", err)
+	}
+
+	// Preenche apenas os campos vazios
+	if req.Name == "" {
+		req.Name = pessoa.Nome
+		log.Printf("✅ Nome gerado: %s", req.Name)
+	}
+
+	if req.Email == "" {
+		req.Email = pessoa.Email
+		log.Printf("✅ Email gerado: %s", req.Email)
+	}
+
+	if req.Document == "" {
+		req.Document = fakerService.CleanCPF(pessoa.CPF)
+		log.Printf("✅ CPF gerado: %s", req.Document)
+	}
+
+	if req.Telephone == "" {
+		req.Telephone = fakerService.CleanPhone(pessoa.Celular)
+		log.Printf("✅ Telefone gerado: %s", req.Telephone)
+	}
+
 	return nil
 }
