@@ -46,7 +46,7 @@ func Load() *Config {
 		QuantumPayAPIURL:      getEnv("QUANTUMPAY_API_URL", "https://api.quantumpayments.com.br/v1/transactions"),
 		QuantumPaySecretKey:   getEnv("QUANTUMPAY_SECRET_KEY", ""),
 		QuantumPayProductName: getEnv("QUANTUMPAY_PRODUCT_NAME", "Produto"),
-		BluPayAPIURL:          getEnv("BLUPAY_API_URL", "https://docs.blupayip.io/baseUrl/api/v1"),
+		BluPayAPIURL:          getEnv("BLUPAY_API_URL", "https://api.blupayip.io"),
 		BluPaySecretKey:       getEnv("BLUPAY_SECRET_KEY", "live_-8EI6hKJSkaYUyvyBjBlDZdkfee0hY8_"),
 		BluPayPublicKey:       getEnv("BLUPAY_PUBLIC_KEY", "65136884-dd99-4ede-8566-28505082473a"),
 		BluPayWebhookSecret:   getEnv("BLUPAY_WEBHOOK_SECRET", "secret_900de97d1cf10dda70c803fede642899"),
