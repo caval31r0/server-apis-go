@@ -164,7 +164,7 @@ func (s *BluPayService) callBluPayAPI(req *dto.BluPayRequest) (*dto.BluPayAPIRes
 	body, _ := json.Marshal(payload)
 	log.Printf("📤 [BluPay] Request: %s", string(body))
 
-	httpReq, err := http.NewRequest("POST", s.cfg.BluPayAPIURL+"/transactions", bytes.NewBuffer(body))
+	httpReq, err := http.NewRequest("POST", s.cfg.BluPayAPIURL+"/api/v1/transactions", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
