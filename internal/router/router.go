@@ -24,6 +24,7 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	webhookService := services.NewWebhookService(db, redis, rabbitMQ, cfg)
 	utmifyService := services.NewUtmifyService(cfg)
 	quantumPayService := services.NewQuantumPayService(db, redis, rabbitMQ, cfg)
+	bluPayService := services.NewBluPayService(db, redis, rabbitMQ, cfg)
 	cpfService := services.NewCPFService(cfg)
 
 	// Handlers
@@ -31,6 +32,7 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	webhookHandler := handlers.NewWebhookHandler(webhookService, utmifyService)
 	healthHandler := handlers.NewHealthHandler(db, redis)
 	quantumPayHandler := handlers.NewQuantumPayHandler(quantumPayService)
+	bluPayHandler := handlers.NewBluPayHandler(bluPayService)
 	cpfHandler := handlers.NewCPFHandler(cpfService)
 
 	// Health check
@@ -51,13 +53,16 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 		webhooks := v1.Group("/webhooks")
 		{
 			webhooks.POST("/payment", webhookHandler.HandlePayment)
+			webhooks.POST("/blupay", webhookHandler.HandlePayment)  // Rota específica BluPay
+			webhooks.POST("/quantumpay", webhookHandler.HandlePayment)  // Rota específica QuantumPay
 		}
 	}
 
-	// API Payment (QuantumPay)
+	// API Payment (QuantumPay & BluPay)
 	payment := r.Group("/api/payment")
 	{
 		payment.POST("/quantumpay", quantumPayHandler.CreatePayment)
+		payment.POST("/blupay", bluPayHandler.CreatePayment)
 	}
 
 	// API CPF

@@ -26,6 +26,10 @@ type WebhookPayload struct {
 	ObjectID interface{}         `json:"objectId"` // Pode ser string ou número
 	Data     *WebhookDataPayload `json:"data"`
 
+	// Formato BluPay
+	ID    string `json:"id"`    // ID do evento
+	Event string `json:"event"` // transaction.paid, transaction.refunded, etc
+
 	// Formato legado MangoFy
 	PaymentCode   string `json:"payment_code"`
 	PaymentStatus string `json:"payment_status"`
@@ -72,9 +76,37 @@ type WebhookFee struct {
 }
 
 func (w *WebhookPayload) GetPaymentCode() string {
+	// Formato BluPay (usa objectId do webhook)
+	if w.Event != "" && w.ObjectID != nil {
+		switch v := w.ObjectID.(type) {
+		case string:
+			return v
+		case float64:
+			return fmt.Sprintf("%.0f", v)
+		case int:
+			return fmt.Sprintf("%d", v)
+		default:
+			return fmt.Sprintf("%v", v)
+		}
+	}
+
 	// Formato QuantumPay
 	if w.ObjectID != nil {
 		switch v := w.ObjectID.(type) {
+		case string:
+			return v
+		case float64:
+			return fmt.Sprintf("%.0f", v)
+		case int:
+			return fmt.Sprintf("%d", v)
+		default:
+			return fmt.Sprintf("%v", v)
+		}
+	}
+
+	// Formato BluPay - data.id
+	if w.Data != nil && w.Data.ID != nil {
+		switch v := w.Data.ID.(type) {
 		case string:
 			return v
 		case float64:
@@ -94,7 +126,19 @@ func (w *WebhookPayload) GetPaymentCode() string {
 }
 
 func (w *WebhookPayload) GetStatus() string {
-	// Formato QuantumPay
+	// Formato BluPay (extrai status do event)
+	if w.Event != "" {
+		switch w.Event {
+		case "transaction.paid":
+			return "paid"
+		case "transaction.refunded":
+			return "refunded"
+		case "transaction.cancelled":
+			return "cancelled"
+		}
+	}
+
+	// Formato QuantumPay / BluPay data.status
 	if w.Data != nil && w.Data.Status != "" {
 		return w.Data.Status
 	}
