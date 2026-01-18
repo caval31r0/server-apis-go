@@ -2,12 +2,13 @@ package dto
 
 // QuantumPay Request DTOs
 type QuantumPayRequest struct {
-	Amount    int                    `json:"amount" binding:"required,min=1"`
-	Name      string                 `json:"name"`
-	Email     string                 `json:"email"`
-	Document  string                 `json:"document"`
-	Telephone string                 `json:"telephone"`
-	UTMParams map[string]interface{} `json:"utm_params"`
+	Amount     int                    `json:"amount" binding:"required,min=1"`
+	Name       string                 `json:"name"`
+	Email      string                 `json:"email"`
+	Document   string                 `json:"document"`
+	Telephone  string                 `json:"telephone"`
+	WebhookURL string                 `json:"webhook_url"`
+	UTMParams  map[string]interface{} `json:"utm_params"`
 }
 
 type QuantumPayAPIRequest struct {

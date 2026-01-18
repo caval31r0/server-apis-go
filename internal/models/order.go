@@ -26,6 +26,7 @@ type Order struct {
 	PaymentMethod string     `gorm:"type:varchar(50)" json:"payment_method"`
 	Platform      string     `gorm:"type:varchar(100)" json:"platform"`
 	PixCode       string     `gorm:"type:text" json:"pix_code,omitempty"`
+	WebhookURL    string     `gorm:"type:text" json:"webhook_url,omitempty"`
 
 	CustomerID uuid.UUID `gorm:"type:uuid" json:"customer_id"`
 	Customer   Customer  `gorm:"foreignKey:CustomerID" json:"customer"`

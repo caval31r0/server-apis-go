@@ -14,6 +14,8 @@ Servidor backend completo para processamento de pagamentos PIX com múltiplos ga
    - [BluPay](#blupay)
    - [Consultar Pagamento](#consultar-pagamento)
 3. [Webhooks](#webhooks)
+   - [Receber Webhooks](#receber-webhooks)
+   - [Webhooks Externos](#webhooks-externos)
 4. [Consulta CPF](#consulta-cpf)
 5. [Códigos de Status](#códigos-de-status)
 6. [Erros Comuns](#erros-comuns)
@@ -278,15 +280,17 @@ curl https://server-apis-go-production.up.railway.app/api/v1/payments/transactio
 
 ## Webhooks
 
-### POST `/api/v1/webhooks/payment`
+### Receber Webhooks
+
+#### POST `/api/v1/webhooks/payment`
 
 Endpoint genérico para receber webhooks de pagamento (suporta todos os gateways).
 
-### POST `/api/v1/webhooks/blupay`
+#### POST `/api/v1/webhooks/blupay`
 
 Endpoint específico para webhooks BluPay.
 
-### POST `/api/v1/webhooks/quantumpay`
+#### POST `/api/v1/webhooks/quantumpay`
 
 Endpoint específico para webhooks QuantumPay.
 
@@ -334,6 +338,135 @@ Endpoint específico para webhooks QuantumPay.
 - `transaction.paid` - Pagamento aprovado
 - `transaction.refunded` - Pagamento estornado
 - `transaction.cancelled` - Pagamento cancelado
+
+---
+
+### Webhooks Externos
+
+A API pode enviar webhooks para **sua URL** quando um pagamento for aprovado. Basta fornecer o campo `webhook_url` ao criar o pagamento.
+
+#### Como funcionar
+
+1. Ao criar um pagamento (BluPay ou QuantumPay), inclua o campo `webhook_url`:
+
+```json
+{
+  "amount": 10000,
+  "webhook_url": "https://meudominio.com/webhook.php",
+  "utm_params": { ... }
+}
+```
+
+2. Quando o pagamento for **aprovado**, a API enviará automaticamente um webhook para sua URL.
+
+#### Payload do Webhook Externo
+
+```json
+{
+  "event": "payment.approved",
+  "transaction_id": "d22ed312-0959-45df-b09a-c4c9780b62a2",
+  "order_id": "20a74532-7876-4e3d-9806-5e60130d081a",
+  "status": "approved",
+  "amount": 10000,
+  "payment_method": "pix",
+  "platform": "BluPay",
+  "approved_at": "2026-01-17T06:15:30Z",
+  "created_at": "2026-01-17T06:11:53Z",
+  "customer": {
+    "id": "615d933c-7a73-44a8-af7e-1059013528fa",
+    "name": "Isabel Antônio",
+    "email": "isabel_antonio@terra.com.br",
+    "phone": "14904767111",
+    "document": "45532372101"
+  },
+  "tracking_params": {
+    "utm_source": "google",
+    "utm_campaign": "23455227240",
+    "utm_medium": "193094442473",
+    "utm_content": "792714546957",
+    "utm_term": "b",
+    "gclid": "CjwKCAiA4KfLBhB0EiwAUY7GAaMKjCUR8dR...",
+    "fbclid": "",
+    "ttclid": "",
+    "sck": "",
+    "xcod": ""
+  }
+}
+```
+
+#### Headers Enviados
+
+- `Content-Type: application/json`
+- `User-Agent: Server-APIs-Webhook/1.0`
+- `X-Webhook-Event: payment.approved`
+- `X-Transaction-ID: d22ed312-0959-45df-b09a-c4c9780b62a2`
+
+#### Retry Policy
+
+A API tenta enviar o webhook até **3 vezes** com backoff exponencial:
+- Tentativa 1: Imediato
+- Tentativa 2: Aguarda 1 segundo
+- Tentativa 3: Aguarda 2 segundos
+
+Seu endpoint deve responder com **HTTP 2xx** (200-299) para confirmar recebimento.
+
+#### Exemplo PHP
+
+```php
+<?php
+// webhook.php
+
+// Lê o payload
+$payload = file_get_contents('php://input');
+$data = json_decode($payload, true);
+
+// Valida evento
+if ($data['event'] === 'payment.approved') {
+    $transaction_id = $data['transaction_id'];
+    $amount = $data['amount'];
+    $customer_email = $data['customer']['email'];
+    $utm_source = $data['tracking_params']['utm_source'];
+
+    // Processa o pagamento aprovado
+    // ... sua lógica aqui ...
+
+    // Retorna sucesso
+    http_response_code(200);
+    echo json_encode(['success' => true]);
+} else {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid event']);
+}
+?>
+```
+
+#### Exemplo Node.js
+
+```javascript
+app.post('/webhook', express.json(), (req, res) => {
+  const { event, transaction_id, amount, customer, tracking_params } = req.body;
+
+  if (event === 'payment.approved') {
+    console.log(`Pagamento aprovado: ${transaction_id} - R$ ${amount/100}`);
+    console.log(`Cliente: ${customer.name} (${customer.email})`);
+    console.log(`UTM Source: ${tracking_params.utm_source}`);
+
+    // Processa o pagamento aprovado
+    // ... sua lógica aqui ...
+
+    res.json({ success: true });
+  } else {
+    res.status(400).json({ error: 'Invalid event' });
+  }
+});
+```
+
+#### Testando Webhooks
+
+Para testar localmente, use ferramentas como:
+- **ngrok**: `ngrok http 80`
+- **webhook.site**: Recebe e exibe webhooks
+- **RequestBin**: Inspeciona payloads HTTP
 
 ---
 

@@ -1,9 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -91,6 +95,9 @@ func (s *WebhookService) ProcessWebhook(ctx context.Context, webhook *dto.Webhoo
 		} else {
 			log.Printf("⚠️ [Webhook] RabbitMQ não disponível, eventos não publicados")
 		}
+
+		// Envia webhook para URL externa (assíncrono)
+		go s.SendExternalWebhook(&order)
 	}
 
 	return nil
@@ -112,4 +119,95 @@ func (s *WebhookService) mapStatus(status string) models.OrderStatus {
 	default:
 		return models.OrderStatusPending
 	}
+}
+
+// SendExternalWebhook envia webhook para URL externa do cliente
+func (s *WebhookService) SendExternalWebhook(order *models.Order) {
+	if order.WebhookURL == "" {
+		log.Printf("⚠️ [Webhook Externo] Nenhuma URL configurada para order %s", order.ID)
+		return
+	}
+
+	log.Printf("📤 [Webhook Externo] Enviando para: %s", order.WebhookURL)
+
+	// Prepara payload do webhook
+	payload := map[string]interface{}{
+		"event":          "payment.approved",
+		"transaction_id": order.TransactionID,
+		"order_id":       order.ID.String(),
+		"status":         string(order.Status),
+		"amount":         order.Amount,
+		"payment_method": order.PaymentMethod,
+		"platform":       order.Platform,
+		"approved_at":    order.ApprovedAt,
+		"created_at":     order.CreatedAt,
+		"customer": map[string]interface{}{
+			"id":       order.Customer.ID.String(),
+			"name":     order.Customer.Name,
+			"email":    order.Customer.Email,
+			"phone":    order.Customer.Phone,
+			"document": order.Customer.Document,
+		},
+	}
+
+	// Se tiver tracking parameters, inclui
+	if order.TrackingParameter != nil {
+		payload["tracking_params"] = map[string]interface{}{
+			"utm_source":   order.TrackingParameter.UtmSource,
+			"utm_campaign": order.TrackingParameter.UtmCampaign,
+			"utm_medium":   order.TrackingParameter.UtmMedium,
+			"utm_content":  order.TrackingParameter.UtmContent,
+			"utm_term":     order.TrackingParameter.UtmTerm,
+			"gclid":        order.TrackingParameter.Gclid,
+			"fbclid":       order.TrackingParameter.Fbclid,
+			"ttclid":       order.TrackingParameter.Ttclid,
+			"sck":          order.TrackingParameter.Sck,
+			"xcod":         order.TrackingParameter.Xcod,
+		}
+	}
+
+	body, _ := json.Marshal(payload)
+	log.Printf("📦 [Webhook Externo] Payload: %s", string(body))
+
+	// Envia webhook com retry (3 tentativas)
+	maxRetries := 3
+	for i := 1; i <= maxRetries; i++ {
+		httpReq, err := http.NewRequest("POST", order.WebhookURL, bytes.NewBuffer(body))
+		if err != nil {
+			log.Printf("❌ [Webhook Externo] Erro ao criar requisição: %v", err)
+			return
+		}
+
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("User-Agent", "Server-APIs-Webhook/1.0")
+		httpReq.Header.Set("X-Webhook-Event", "payment.approved")
+		httpReq.Header.Set("X-Transaction-ID", order.TransactionID)
+
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			log.Printf("❌ [Webhook Externo] Tentativa %d/%d falhou: %v", i, maxRetries, err)
+			if i < maxRetries {
+				time.Sleep(time.Duration(i) * time.Second) // Backoff exponencial
+				continue
+			}
+			return
+		}
+		defer resp.Body.Close()
+
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("📡 [Webhook Externo] HTTP %d: %s", resp.StatusCode, string(respBody))
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			log.Printf("✅ [Webhook Externo] Enviado com sucesso para %s", order.WebhookURL)
+			return
+		}
+
+		log.Printf("⚠️ [Webhook Externo] Tentativa %d/%d - HTTP %d", i, maxRetries, resp.StatusCode)
+		if i < maxRetries {
+			time.Sleep(time.Duration(i) * time.Second) // Backoff exponencial
+		}
+	}
+
+	log.Printf("❌ [Webhook Externo] Todas as tentativas falharam para %s", order.WebhookURL)
 }

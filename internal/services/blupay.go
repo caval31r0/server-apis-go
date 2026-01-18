@@ -89,6 +89,7 @@ func (s *BluPayService) CreatePayment(ctx context.Context, req *dto.BluPayReques
 		PaymentMethod:       "pix",
 		Platform:            "BluPay",
 		PixCode:             pixCode,
+		WebhookURL:          req.WebhookURL,
 		CustomerID:          customer.ID,
 		TrackingParameterID: trackingParamID,
 	}

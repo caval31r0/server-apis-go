@@ -89,6 +89,7 @@ func (s *QuantumPayService) CreatePayment(ctx context.Context, req *dto.QuantumP
 		PaymentMethod:       "pix",
 		Platform:            "QuantumPay",
 		PixCode:             pixCode,
+		WebhookURL:          req.WebhookURL,
 		CustomerID:          customer.ID,
 		TrackingParameterID: trackingParamID,
 	}

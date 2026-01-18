@@ -1,0 +1,1172 @@
+# Intro
+
+# Pix API – Overview
+
+Pix API lets you receive and send Pix payments with Basic Auth and idempotency to avoid duplicates.
+
+## Key areas
+- **Pix In**: create Pix charges and query received payments.
+- **Pix Out**: initiate Pix transfers (withdrawals) and query by `id`, `externalRef`, or `idempotencyKey`.
+- **Wallets**: retrieve Pix wallet balances (available, blocked, reserve).
+- **Webhooks**: receive `transaction.*` (Pix In) and `transfer.*` (Pix Out) events, including `externalRef` and optional HMAC signature.
+
+## Auth & security
+- Basic Auth on all endpoints (`secretKey:publicKey`).
+- Send `Idempotency-Key` (UUID) on Pix Out to guarantee single processing.
+- If `webhookSecret` is provided, webhooks include `X-Webhook-Signature` (HMAC-SHA256 of the body).
+
+## Conventions
+- Monetary values are in cents.
+- `externalRef` can be sent on creation and returns in queries/webhooks for reconciliation.
+- Pix Out webhooks include destination, beneficiary (when paid), and detailed status.
+
+
+
+# Create Pix In Transaction
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /baseUrl/api/v1/transactions:
+    post:
+      summary: Create Pix In Transaction
+      deprecated: false
+      description: >-
+        Creates a Pix payment request (Pix In) for receiving funds.
+
+
+        **Amount:** All values are in cents (e.g., 1000 = R$ 10.00).
+
+
+        **Webhooks:** If `postbackUrl` is provided, webhook notifications will
+        be sent to this URL. If `webhookSecret` is also provided, webhooks will
+        include an HMAC-SHA256 signature in the `X-Webhook-Signature` header.
+
+
+        ### Request Body Fields
+
+
+        | Field | Type | Required | Description |
+
+        |-------|------|----------|-------------|
+
+        | amount | integer | Yes | Amount in cents (min: 100) |
+
+        | paymentMethod | string | Yes | Fixed value: `pix` |
+
+        | customer | object | Yes | Payer/customer information |
+
+        | customer.name | string | Yes | Payer name |
+
+        | customer.email | string | No | Payer email |
+
+        | customer.phone | string | No | Phone with area code, digits only |
+
+        | customer.document | object | Yes | Document information |
+
+        | customer.document.type | string | Yes | `cpf` or `cnpj` |
+
+        | customer.document.number | string | Yes | Document number (digits
+        only) |
+
+        | items | array | Yes | List of items/products |
+
+        | items[].title | string | Yes | Item title/description |
+
+        | items[].unitPrice | integer | Yes | Unit price in cents |
+
+        | items[].quantity | integer | Yes | Quantity of items |
+
+        | items[].tangible | boolean | No | Whether physical product |
+
+        | postbackUrl | string | No | URL for webhook notifications |
+
+        | webhookSecret | string | No | Secret key for HMAC signature |
+
+        | metadata | object | No | Custom metadata for tracking |
+      tags:
+        - Pix In
+      parameters:
+        - name: Content-Type
+          in: header
+          description: ''
+          required: true
+          example: application/json
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                paymentMethod:
+                  type: string
+                externalRef:
+                  type: string
+                customer:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    phone:
+                      type: string
+                    document:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        number:
+                          type: string
+                      required:
+                        - type
+                        - number
+                      x-apidog-orders:
+                        - type
+                        - number
+                  required:
+                    - name
+                    - email
+                    - phone
+                    - document
+                  x-apidog-orders:
+                    - name
+                    - email
+                    - phone
+                    - document
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      unitPrice:
+                        type: integer
+                      quantity:
+                        type: integer
+                      tangible:
+                        type: boolean
+                    x-apidog-orders:
+                      - title
+                      - unitPrice
+                      - quantity
+                      - tangible
+                postbackUrl:
+                  type: string
+                webhookSecret:
+                  type: string
+                metadata:
+                  type: object
+                  properties:
+                    orderId:
+                      type: string
+                  required:
+                    - orderId
+                  x-apidog-orders:
+                    - orderId
+              required:
+                - amount
+                - paymentMethod
+                - externalRef
+                - customer
+                - items
+                - postbackUrl
+                - webhookSecret
+                - metadata
+              x-apidog-orders:
+                - amount
+                - paymentMethod
+                - externalRef
+                - customer
+                - items
+                - postbackUrl
+                - webhookSecret
+                - metadata
+            example:
+              amount: 10000
+              paymentMethod: pix
+              externalRef: ORD-123
+              customer:
+                name: John Smith
+                email: john@email.com
+                phone: '11999999999'
+                document:
+                  type: cpf
+                  number: '12345678910'
+              items:
+                - title: Pro Subscription
+                  unitPrice: 10000
+                  quantity: 1
+                  tangible: false
+              postbackUrl: https://webhook.example.com/postback
+              webhookSecret: your-secret-key-for-hmac
+              metadata:
+                orderId: ORD-123
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  amount:
+                    type: integer
+                  refundedAmount:
+                    type: integer
+                  companyId:
+                    type: string
+                  paymentMethod:
+                    type: string
+                  status:
+                    type: string
+                  externalRef:
+                    type: string
+                  postbackUrl:
+                    type: string
+                  metadata:
+                    type: object
+                    properties:
+                      item1:
+                        type: string
+                      item2:
+                        type: string
+                    required:
+                      - item1
+                      - item2
+                    x-apidog-orders:
+                      - item1
+                      - item2
+                  traceable:
+                    type: boolean
+                  secureId:
+                    type: string
+                  secureUrl:
+                    type: string
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  paidAt:
+                    type: 'null'
+                  ip:
+                    type: string
+                  customer:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      phone:
+                        type: string
+                      createdAt:
+                        type: string
+                      document:
+                        type: object
+                        properties:
+                          number:
+                            type: string
+                          type:
+                            type: string
+                        required:
+                          - number
+                          - type
+                        x-apidog-orders:
+                          - number
+                          - type
+                    required:
+                      - id
+                      - name
+                      - email
+                      - phone
+                      - createdAt
+                      - document
+                    x-apidog-orders:
+                      - id
+                      - name
+                      - email
+                      - phone
+                      - createdAt
+                      - document
+                  card:
+                    type: 'null'
+                  pix:
+                    type: object
+                    properties:
+                      qrcode:
+                        type: string
+                      expiresAt:
+                        type: string
+                    required:
+                      - qrcode
+                      - expiresAt
+                    x-apidog-orders:
+                      - qrcode
+                      - expiresAt
+                  boleto:
+                    type: 'null'
+                  shipping:
+                    type: 'null'
+                  refusedReason:
+                    type: 'null'
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        externalRef:
+                          type: 'null'
+                        title:
+                          type: string
+                        unitPrice:
+                          type: integer
+                        quantity:
+                          type: integer
+                        tangible:
+                          type: boolean
+                      x-apidog-orders:
+                        - externalRef
+                        - title
+                        - unitPrice
+                        - quantity
+                        - tangible
+                  splits:
+                    type: array
+                    items:
+                      type: string
+                  refunds:
+                    type: array
+                    items:
+                      type: string
+                  delivery:
+                    type: 'null'
+                  fee:
+                    type: object
+                    properties:
+                      fixedAmount:
+                        type: integer
+                      spreadPercentage:
+                        type: number
+                      estimatedFee:
+                        type: integer
+                      netAmount:
+                        type: integer
+                      pixInFeeType:
+                        type: string
+                    required:
+                      - fixedAmount
+                      - spreadPercentage
+                      - estimatedFee
+                      - netAmount
+                      - pixInFeeType
+                    x-apidog-orders:
+                      - fixedAmount
+                      - spreadPercentage
+                      - estimatedFee
+                      - netAmount
+                      - pixInFeeType
+                required:
+                  - id
+                  - amount
+                  - refundedAmount
+                  - companyId
+                  - paymentMethod
+                  - status
+                  - externalRef
+                  - postbackUrl
+                  - metadata
+                  - traceable
+                  - secureId
+                  - secureUrl
+                  - createdAt
+                  - updatedAt
+                  - paidAt
+                  - ip
+                  - customer
+                  - card
+                  - pix
+                  - boleto
+                  - shipping
+                  - refusedReason
+                  - items
+                  - splits
+                  - refunds
+                  - delivery
+                  - fee
+                x-apidog-orders:
+                  - id
+                  - amount
+                  - refundedAmount
+                  - companyId
+                  - paymentMethod
+                  - status
+                  - externalRef
+                  - postbackUrl
+                  - metadata
+                  - traceable
+                  - secureId
+                  - secureUrl
+                  - createdAt
+                  - updatedAt
+                  - paidAt
+                  - ip
+                  - customer
+                  - card
+                  - pix
+                  - boleto
+                  - shipping
+                  - refusedReason
+                  - items
+                  - splits
+                  - refunds
+                  - delivery
+                  - fee
+              example:
+                id: bc06ccc9-c64f-4dc5-b54e-baabf08fbb1b
+                amount: 500
+                refundedAmount: 0
+                companyId: 4d1a3c25-2cfc-4f72-b814-23d9fd168c8e
+                paymentMethod: pix
+                status: pending
+                externalRef: ORD-123
+                postbackUrl: https://webhook.example.com/postback
+                metadata:
+                  item1: item1
+                  item2: item2
+                traceable: false
+                secureId: bc06ccc9-c64f-4dc5-b54e-baabf08fbb1b
+                secureUrl: >-
+                  https://pay.example.com/pay/bc06ccc9-c64f-4dc5-b54e-baabf08fbb1b
+                createdAt: '2025-12-12T02:05:53.724Z'
+                updatedAt: '2025-12-12T02:05:53.724Z'
+                paidAt: null
+                ip: '::1'
+                customer:
+                  id: e00d270d-84de-4b94-8d1b-3bb26921e04f
+                  name: John Smith
+                  email: john@email.com
+                  phone: '11999999999'
+                  createdAt: '2025-12-02T19:12:51.628Z'
+                  document:
+                    number: '12345678910'
+                    type: cpf
+                card: null
+                pix:
+                  qrcode: >-
+                    00020101021226880014br.gov.bcb.pix2566qrcode.example.com/pix/a1b2c3d4-e5f6-7890-abcd-ef12345678905204000053039865802BR5918COMPANY
+                    EXAMPLE LTDA6008SaoPaulo62070503***6304ABCD
+                  expiresAt: '2025-12-14T02:05:52.012Z'
+                boleto: null
+                shipping: null
+                refusedReason: null
+                items:
+                  - externalRef: null
+                    title: Digital Product
+                    unitPrice: 500
+                    quantity: 1
+                    tangible: false
+                splits: []
+                refunds: []
+                delivery: null
+                fee:
+                  fixedAmount: 50
+                  spreadPercentage: 1.5
+                  estimatedFee: 58
+                  netAmount: 442
+                  pixInFeeType: MIXED
+          headers: {}
+          x-apidog-name: ''
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - message
+                  - code
+                x-apidog-orders:
+                  - error
+                  - message
+                  - code
+              example:
+                error: VALIDATION_ERROR
+                message: amount must be >= 100
+                code: INVALID_AMOUNT
+          headers: {}
+          x-apidog-name: ''
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                x-apidog-orders:
+                  - error
+                  - message
+              example:
+                error: AUTHENTICATION_ERROR
+                message: Invalid or missing authentication credentials
+          headers: {}
+          x-apidog-name: ''
+        '422':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - message
+                  - code
+                x-apidog-orders:
+                  - error
+                  - message
+                  - code
+              example:
+                error: BUSINESS_ERROR
+                message: Merchant blocked
+                code: MERCHANT_BLOCKED
+          headers: {}
+          x-apidog-name: ''
+      security:
+        - basic: []
+      x-apidog-folder: Pix In
+      x-apidog-status: released
+      x-run-in-apidog: https://app.apidog.com/web/project/1152278/apis/api-25565104-run
+components:
+  schemas: {}
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+servers: []
+security:
+  - basic: []
+
+```# Get Pix In Transaction
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /baseUrl/api/v1/transactions/pix-in:
+    get:
+      summary: Get Pix In Transaction
+      deprecated: false
+      description: |-
+        Retrieve a PIX IN transaction by `id` or `externalRef`.
+
+        Query params (at least one):
+        - `id`: transaction `id` (UUID)
+        - `externalRef`: client reference
+
+        Requires Basic Auth (`secretKey:publicKey`).
+      tags:
+        - Pix In
+      parameters:
+        - name: id
+          in: query
+          description: Transaction id
+          required: true
+          example: '{{transactionId}}'
+          schema:
+            type: string
+        - name: externalRef
+          in: query
+          description: Optional external reference
+          required: true
+          example: ''
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  amount:
+                    type: integer
+                  type:
+                    type: string
+                  status:
+                    type: string
+                  refundedAmount:
+                    type: integer
+                  companyId:
+                    type: string
+                  paymentMethod:
+                    type: string
+                  externalRef:
+                    type: string
+                  postbackUrl:
+                    type: string
+                  ip:
+                    type: string
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  paidAt:
+                    type: string
+                  cancelledAt:
+                    type: 'null'
+                  refundedAt:
+                    type: 'null'
+                  customer:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      email:
+                        type: string
+                      phone:
+                        type: string
+                      document:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                          number:
+                            type: string
+                        required:
+                          - type
+                          - number
+                        x-apidog-orders:
+                          - type
+                          - number
+                    required:
+                      - id
+                      - name
+                      - email
+                      - phone
+                      - document
+                    x-apidog-orders:
+                      - id
+                      - name
+                      - email
+                      - phone
+                      - document
+                  pix:
+                    type: object
+                    properties:
+                      qrcode:
+                        type: string
+                      expiresAt:
+                        type: string
+                      endToEndId:
+                        type: string
+                      payer:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          document:
+                            type: string
+                          documentType:
+                            type: string
+                          branch:
+                            type: string
+                          account:
+                            type: string
+                          bankName:
+                            type: string
+                          bankIspb:
+                            type: string
+                        required:
+                          - name
+                          - document
+                          - documentType
+                          - branch
+                          - account
+                          - bankName
+                          - bankIspb
+                        x-apidog-orders:
+                          - name
+                          - document
+                          - documentType
+                          - branch
+                          - account
+                          - bankName
+                          - bankIspb
+                    required:
+                      - qrcode
+                      - expiresAt
+                      - endToEndId
+                      - payer
+                    x-apidog-orders:
+                      - qrcode
+                      - expiresAt
+                      - endToEndId
+                      - payer
+                  refusedReason:
+                    type: 'null'
+                  refusedCode:
+                    type: 'null'
+                  refunds:
+                    type: array
+                    items:
+                      type: string
+                  fee:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      net:
+                        type: integer
+                    required:
+                      - total
+                      - net
+                    x-apidog-orders:
+                      - total
+                      - net
+                required:
+                  - id
+                  - amount
+                  - type
+                  - status
+                  - refundedAmount
+                  - companyId
+                  - paymentMethod
+                  - externalRef
+                  - postbackUrl
+                  - ip
+                  - createdAt
+                  - updatedAt
+                  - paidAt
+                  - cancelledAt
+                  - refundedAt
+                  - customer
+                  - pix
+                  - refusedReason
+                  - refusedCode
+                  - refunds
+                  - fee
+                x-apidog-orders:
+                  - id
+                  - amount
+                  - type
+                  - status
+                  - refundedAmount
+                  - companyId
+                  - paymentMethod
+                  - externalRef
+                  - postbackUrl
+                  - ip
+                  - createdAt
+                  - updatedAt
+                  - paidAt
+                  - cancelledAt
+                  - refundedAt
+                  - customer
+                  - pix
+                  - refusedReason
+                  - refusedCode
+                  - refunds
+                  - fee
+              example:
+                id: bc06ccc9-c64f-4dc5-b54e-baabf08fbb1b
+                amount: 10000
+                type: pix_in
+                status: paid
+                refundedAmount: 0
+                companyId: 4d1a3c25-2cfc-4f72-b814-23d9fd168c8e
+                paymentMethod: pix
+                externalRef: ORD-123
+                postbackUrl: https://webhook.example.com/postback
+                ip: '::1'
+                createdAt: '2025-12-12T02:05:53.724Z'
+                updatedAt: '2025-12-12T02:06:10.724Z'
+                paidAt: '2025-12-12T02:06:08.000Z'
+                cancelledAt: null
+                refundedAt: null
+                customer:
+                  id: e00d270d-84de-4b94-8d1b-3bb26921e04f
+                  name: John Smith
+                  email: john@email.com
+                  phone: '11999999999'
+                  document:
+                    type: cpf
+                    number: '12345678910'
+                pix:
+                  qrcode: >-
+                    00020101021226880014br.gov.bcb.pix2566qrcode.example.com/pix/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  expiresAt: '2025-12-14T02:05:52.012Z'
+                  endToEndId: E18236120202512020455s14af098224
+                  payer:
+                    name: Carlos Eduardo Santos
+                    document: '98765432100'
+                    documentType: cpf
+                    branch: '0001'
+                    account: '123456'
+                    bankName: NUBANK
+                    bankIspb: '18236120'
+                refusedReason: null
+                refusedCode: null
+                refunds: []
+                fee:
+                  total: 150
+                  net: 9850
+          headers: {}
+          x-apidog-name: ''
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - code
+                x-apidog-orders:
+                  - error
+                  - code
+              example:
+                error: Transaction not found
+                code: TRANSACTION_NOT_FOUND
+          headers: {}
+          x-apidog-name: ''
+      security:
+        - basic: []
+      x-apidog-folder: Pix In
+      x-apidog-status: released
+      x-run-in-apidog: https://app.apidog.com/web/project/1152278/apis/api-25565105-run
+components:
+  schemas: {}
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+servers: []
+security:
+  - basic: []
+
+```
+
+
+# Pix In - Payment Confirmed (transaction.paid)
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /postback:
+    post:
+      summary: Pix In - Payment Confirmed (transaction.paid)
+      deprecated: false
+      description: >-
+        Webhook sent when a Pix In payment is confirmed.
+
+
+        **Event:** `transaction.paid`
+
+        **Type:** `transaction`
+
+
+        This webhook is sent to your configured `postbackUrl` when a Pix In
+        payment is successfully confirmed.
+      tags:
+        - Webhooks (Reference)
+      parameters:
+        - name: Content-Type
+          in: header
+          description: ''
+          required: true
+          example: application/json
+          schema:
+            type: string
+        - name: X-Webhook-Signature
+          in: header
+          description: HMAC-SHA256 signature (present if webhookSecret was provided)
+          required: true
+          example: a1b2c3d4e5f6...
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                event:
+                  type: string
+                objectId:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+                    amount:
+                      type: integer
+                    refundedAmount:
+                      type: integer
+                    installments:
+                      type: integer
+                    paymentMethod:
+                      type: string
+                    companyId:
+                      type: string
+                    externalRef:
+                      type: string
+                    customer:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        email:
+                          type: string
+                        phone:
+                          type: string
+                        document:
+                          type: string
+                        createdAt:
+                          type: string
+                      required:
+                        - id
+                        - name
+                        - email
+                        - phone
+                        - document
+                        - createdAt
+                      x-apidog-orders:
+                        - id
+                        - name
+                        - email
+                        - phone
+                        - document
+                        - createdAt
+                    pix:
+                      type: object
+                      properties:
+                        qrcode:
+                          type: string
+                        end2EndId:
+                          type: string
+                        payer:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            document:
+                              type: string
+                            documentType:
+                              type: string
+                            bankAccount:
+                              type: object
+                              properties:
+                                ispb:
+                                  type: string
+                                branch:
+                                  type: string
+                                account:
+                                  type: string
+                              required:
+                                - ispb
+                                - branch
+                                - account
+                              x-apidog-orders:
+                                - ispb
+                                - branch
+                                - account
+                          required:
+                            - name
+                            - document
+                            - documentType
+                            - bankAccount
+                          x-apidog-orders:
+                            - name
+                            - document
+                            - documentType
+                            - bankAccount
+                      required:
+                        - qrcode
+                        - end2EndId
+                        - payer
+                      x-apidog-orders:
+                        - qrcode
+                        - end2EndId
+                        - payer
+                    paidAt:
+                      type: string
+                    createdAt:
+                      type: string
+                    updatedAt:
+                      type: string
+                    postbackUrl:
+                      type: string
+                  required:
+                    - id
+                    - status
+                    - amount
+                    - refundedAmount
+                    - installments
+                    - paymentMethod
+                    - companyId
+                    - externalRef
+                    - customer
+                    - pix
+                    - paidAt
+                    - createdAt
+                    - updatedAt
+                    - postbackUrl
+                  x-apidog-orders:
+                    - id
+                    - status
+                    - amount
+                    - refundedAmount
+                    - installments
+                    - paymentMethod
+                    - companyId
+                    - externalRef
+                    - customer
+                    - pix
+                    - paidAt
+                    - createdAt
+                    - updatedAt
+                    - postbackUrl
+              required:
+                - id
+                - type
+                - event
+                - objectId
+                - data
+              x-apidog-orders:
+                - id
+                - type
+                - event
+                - objectId
+                - data
+            example:
+              id: evt_1765495168629_zhv3arq75
+              type: transaction
+              event: transaction.paid
+              objectId: 0b922550-ebf7-433b-a5d9-ee56a3c38285
+              data:
+                id: 0b922550-ebf7-433b-a5d9-ee56a3c38285
+                status: paid
+                amount: 500
+                refundedAmount: 0
+                installments: 1
+                paymentMethod: PIX
+                companyId: 4d1a3c25-2cfc-4f72-b814-23d9fd168c8e
+                externalRef: ORD-123
+                customer:
+                  id: e00d270d-84de-4b94-8d1b-3bb26921e04f
+                  name: John Smith
+                  email: john@email.com
+                  phone: '11999999999'
+                  document: '12345678910'
+                  createdAt: '2025-12-02T19:12:51.628Z'
+                pix:
+                  qrcode: >-
+                    00020101021226880014br.gov.bcb.pix2566qrcode.example.com/pix/a1b2c3d4-5e6f-7890-abcd-ef1234567890520400005303986580BR5925COMPANY
+                    EXAMPLE LTDA6008SaoPaulo62070503***6304ABCD
+                  end2EndId: E18236120202512020455s14af098224
+                  payer:
+                    name: Carlos Eduardo Santos
+                    document: '98765432100'
+                    documentType: cpf
+                    bankAccount:
+                      ispb: '18236120'
+                      branch: '1'
+                      account: '123456789'
+                paidAt: '2025-12-02T04:55:26.942Z'
+                createdAt: '2025-12-11T23:16:24.094Z'
+                updatedAt: '2025-12-11T23:19:28.603Z'
+                postbackUrl: https://webhook.example.com/postback
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                x-apidog-orders: []
+          headers: {}
+          x-apidog-name: ''
+      security:
+        - basic: []
+      x-apidog-folder: Webhooks (Reference)
+      x-apidog-status: released
+      x-run-in-apidog: https://app.apidog.com/web/project/1152278/apis/api-25565109-run
+components:
+  schemas: {}
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+servers: []
+security:
+  - basic: []
+
+```

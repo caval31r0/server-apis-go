@@ -8,6 +8,7 @@ type BluPayRequest struct {
 	Document     string                 `json:"document"`
 	Phone        string                 `json:"phone"`
 	ExternalRef  string                 `json:"externalRef"`
+	WebhookURL   string                 `json:"webhook_url"`
 	UTMParams    map[string]interface{} `json:"utm_params"`
 }
 
