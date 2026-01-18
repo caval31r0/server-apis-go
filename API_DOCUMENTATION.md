@@ -116,6 +116,7 @@ curl -X POST https://server-apis-go-production.up.railway.app/api/payment/quantu
     "email": "joao@email.com",
     "document": "12345678910",
     "telephone": "11999999999",
+    "webhook_url": "https://meusite.com/webhook",
     "utm_params": {
       "utm_source": "google",
       "utm_campaign": "black-friday",
@@ -194,13 +195,14 @@ curl -X POST https://server-apis-go-production.up.railway.app/api/payment/blupay
   -d '{"amount": 10000}'
 ```
 
-**cURL (Completo com UTMs):**
+**cURL (Completo com UTMs e Webhook):**
 
 ```bash
 curl -X POST https://server-apis-go-production.up.railway.app/api/payment/blupay \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 10000,
+    "webhook_url": "https://meusite.com/webhook.php",
     "utm_params": {
       "utm_source": "google",
       "utm_campaign": "23455227240",
