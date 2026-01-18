@@ -64,6 +64,7 @@ Cria uma cobrança PIX através do gateway QuantumPay.
   "email": "joao@email.com",
   "document": "12345678910",
   "telephone": "11999999999",
+  "webhook_url": "https://meusite.com/webhook",
   "utm_params": {
     "utm_source": "google",
     "utm_medium": "cpc",
@@ -85,6 +86,7 @@ Cria uma cobrança PIX através do gateway QuantumPay.
 - `email` (opcional): Email do cliente (auto-gerado se vazio)
 - `document` (opcional): CPF do cliente sem formatação (auto-gerado se vazio)
 - `telephone` (opcional): Telefone com DDD (auto-gerado se vazio)
+- `webhook_url` (opcional): URL para receber webhook quando pagamento for aprovado
 - `utm_params` (opcional): Parâmetros de rastreamento UTM
 
 **Response (200 OK):**
@@ -140,6 +142,7 @@ Cria uma cobrança PIX através do gateway BluPay.
   "document": "98765432100",
   "phone": "11988887777",
   "externalRef": "ORD-123",
+  "webhook_url": "https://meusite.com/webhook.php",
   "utm_params": {
     "utm_source": "google",
     "utm_medium": "cpc",
@@ -165,6 +168,7 @@ Cria uma cobrança PIX através do gateway BluPay.
 - `document` (opcional): CPF sem formatação (auto-gerado se vazio)
 - `phone` (opcional): Telefone com DDD (auto-gerado se vazio)
 - `externalRef` (opcional): Referência externa (auto-gerado se vazio)
+- `webhook_url` (opcional): URL para receber webhook quando pagamento for aprovado
 - `utm_params` (opcional): Parâmetros de rastreamento UTM + extras Google Ads
 
 **Response (200 OK):**
