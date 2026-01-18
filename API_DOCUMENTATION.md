@@ -403,10 +403,10 @@ A API pode enviar webhooks para **sua URL** quando um pagamento for aprovado. Ba
 
 #### Retry Policy
 
-A API tenta enviar o webhook até **3 vezes** com backoff exponencial:
+A API tenta enviar o webhook até **3 vezes** com intervalo de **60 segundos**:
 - Tentativa 1: Imediato
-- Tentativa 2: Aguarda 1 segundo
-- Tentativa 3: Aguarda 2 segundos
+- Tentativa 2: Aguarda 60 segundos
+- Tentativa 3: Aguarda 60 segundos
 
 Seu endpoint deve responder com **HTTP 2xx** (200-299) para confirmar recebimento.
 
