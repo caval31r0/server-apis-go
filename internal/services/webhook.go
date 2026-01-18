@@ -169,9 +169,14 @@ func (s *WebhookService) SendExternalWebhook(order *models.Order) {
 	body, _ := json.Marshal(payload)
 	log.Printf("📦 [Webhook Externo] Payload: %s", string(body))
 
-	// Envia webhook com retry (3 tentativas com intervalo de 60 segundos)
-	maxRetries := 3
-	retryInterval := 60 * time.Second
+	// Envia webhook com retry (5 tentativas: imediato, 1s, 10s, 30s, 60s)
+	maxRetries := 5
+	retryIntervals := []time.Duration{
+		1 * time.Second,  // Tentativa 2
+		10 * time.Second, // Tentativa 3
+		30 * time.Second, // Tentativa 4
+		60 * time.Second, // Tentativa 5
+	}
 
 	for i := 1; i <= maxRetries; i++ {
 		httpReq, err := http.NewRequest("POST", order.WebhookURL, bytes.NewBuffer(body))
@@ -190,8 +195,9 @@ func (s *WebhookService) SendExternalWebhook(order *models.Order) {
 		if err != nil {
 			log.Printf("❌ [Webhook Externo] Tentativa %d/%d falhou: %v", i, maxRetries, err)
 			if i < maxRetries {
-				log.Printf("⏳ [Webhook Externo] Aguardando 60 segundos antes da próxima tentativa...")
-				time.Sleep(retryInterval)
+				interval := retryIntervals[i-1]
+				log.Printf("⏳ [Webhook Externo] Aguardando %v antes da próxima tentativa...", interval)
+				time.Sleep(interval)
 				continue
 			}
 			return
@@ -208,8 +214,9 @@ func (s *WebhookService) SendExternalWebhook(order *models.Order) {
 
 		log.Printf("⚠️ [Webhook Externo] Tentativa %d/%d - HTTP %d", i, maxRetries, resp.StatusCode)
 		if i < maxRetries {
-			log.Printf("⏳ [Webhook Externo] Aguardando 60 segundos antes da próxima tentativa...")
-			time.Sleep(retryInterval)
+			interval := retryIntervals[i-1]
+			log.Printf("⏳ [Webhook Externo] Aguardando %v antes da próxima tentativa...", interval)
+			time.Sleep(interval)
 		}
 	}
 
