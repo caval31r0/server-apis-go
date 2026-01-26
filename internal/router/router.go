@@ -26,6 +26,7 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	quantumPayService := services.NewQuantumPayService(db, redis, rabbitMQ, cfg)
 	bluPayService := services.NewBluPayService(db, redis, rabbitMQ, cfg)
 	cpfService := services.NewCPFService(cfg)
+	freeFireService := services.NewFreeFireService()
 
 	// Handlers
 	paymentHandler := handlers.NewPaymentHandler(paymentService)
@@ -34,6 +35,7 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	quantumPayHandler := handlers.NewQuantumPayHandler(quantumPayService)
 	bluPayHandler := handlers.NewBluPayHandler(bluPayService)
 	cpfHandler := handlers.NewCPFHandler(cpfService)
+	freeFireHandler := handlers.NewFreeFireHandler(freeFireService)
 
 	// Health check
 	r.GET("/health", healthHandler.Check)
@@ -68,6 +70,9 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	// API CPF
 	r.GET("/api/cpf/:cpf", cpfHandler.Consultar)
 	r.GET("/api/cpf", cpfHandler.Consultar) // Também aceita query string
+
+	// API FreeFire
+	r.GET("/api/freefire/:id", freeFireHandler.GetPlayer)
 
 	return r
 }
