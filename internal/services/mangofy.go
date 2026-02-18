@@ -139,11 +139,22 @@ func (s *MangoFyService) callMangoFyAPI(req *dto.MangoFyRequest) (*dto.MangoFyAP
 			"name":     req.Name,
 			"document": req.Document,
 			"phone":    req.Phone,
+			"ip": func() string {
+				if req.IP != "" {
+					return req.IP
+				}
+				return "177.0.0.1"
+			}(),
 		},
 		"pix": map[string]interface{}{
 			"expires_in_days": 1,
 		},
-		"extra": req.UTMParams,
+		"extra": func() map[string]interface{} {
+			if req.UTMParams != nil {
+				return req.UTMParams
+			}
+			return map[string]interface{}{}
+		}(),
 	}
 
 	body, _ := json.Marshal(payload)

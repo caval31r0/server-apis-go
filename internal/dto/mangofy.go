@@ -7,6 +7,7 @@ type MangoFyRequest struct {
 	Email      string                 `json:"email"`
 	Document   string                 `json:"document"`
 	Phone      string                 `json:"phone"`
+	IP         string                 `json:"ip"`
 	WebhookURL string                 `json:"webhook_url"`
 	UTMParams  map[string]interface{} `json:"utm_params"`
 }
