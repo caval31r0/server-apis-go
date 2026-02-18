@@ -25,6 +25,7 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	utmifyService := services.NewUtmifyService(cfg)
 	quantumPayService := services.NewQuantumPayService(db, redis, rabbitMQ, cfg)
 	bluPayService := services.NewBluPayService(db, redis, rabbitMQ, cfg)
+	mangoFyService := services.NewMangoFyService(db, redis, rabbitMQ, cfg)
 	cpfService := services.NewCPFService(cfg)
 	freeFireService := services.NewFreeFireService()
 
@@ -34,6 +35,7 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 	healthHandler := handlers.NewHealthHandler(db, redis)
 	quantumPayHandler := handlers.NewQuantumPayHandler(quantumPayService)
 	bluPayHandler := handlers.NewBluPayHandler(bluPayService)
+	mangoFyHandler := handlers.NewMangoFyHandler(mangoFyService, webhookService)
 	cpfHandler := handlers.NewCPFHandler(cpfService)
 	freeFireHandler := handlers.NewFreeFireHandler(freeFireService)
 
@@ -55,16 +57,18 @@ func Setup(db *gorm.DB, redis *redis.Client, rabbitMQ *queue.RabbitMQ, cfg *conf
 		webhooks := v1.Group("/webhooks")
 		{
 			webhooks.POST("/payment", webhookHandler.HandlePayment)
-			webhooks.POST("/blupay", webhookHandler.HandlePayment)  // Rota específica BluPay
+			webhooks.POST("/blupay", webhookHandler.HandlePayment)      // Rota específica BluPay
 			webhooks.POST("/quantumpay", webhookHandler.HandlePayment)  // Rota específica QuantumPay
+			webhooks.POST("/mangofy", mangoFyHandler.HandleWebhook)     // Rota específica MangoFy
 		}
 	}
 
-	// API Payment (QuantumPay & BluPay)
+	// API Payment (QuantumPay, BluPay & MangoFy)
 	payment := r.Group("/api/payment")
 	{
 		payment.POST("/quantumpay", quantumPayHandler.CreatePayment)
 		payment.POST("/blupay", bluPayHandler.CreatePayment)
+		payment.POST("/mangofy", mangoFyHandler.CreatePayment)
 	}
 
 	// API CPF
