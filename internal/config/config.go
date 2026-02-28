@@ -24,6 +24,8 @@ type Config struct {
 	BluPayWebhookSecret   string
 	BluPayWebhookURL      string
 	BluPayProductName     string
+	GenesysAPIURL         string
+	GenesysAPISecret      string
 	UtmifyAPIURL          string
 	UtmifyToken           string
 	WebhookBaseURL        string
@@ -52,6 +54,8 @@ func Load() *Config {
 		BluPayWebhookSecret:   getEnv("BLUPAY_WEBHOOK_SECRET", "secret_900de97d1cf10dda70c803fede642899"),
 		BluPayWebhookURL:      getEnv("BLUPAY_WEBHOOK_URL", ""),
 		BluPayProductName:     getEnv("BLUPAY_PRODUCT_NAME", "Produto"),
+		GenesysAPIURL:         getEnv("GENESYS_API_URL", "https://api.genesys.finance"),
+		GenesysAPISecret:      getEnv("GENESYS_API_SECRET", ""),
 		UtmifyAPIURL:          getEnv("UTMIFY_API_URL", ""),
 		UtmifyToken:           getEnv("UTMIFY_TOKEN", ""),
 		WebhookBaseURL:        getEnv("WEBHOOK_BASE_URL", ""),

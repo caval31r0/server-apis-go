@@ -106,7 +106,7 @@ func (s *WebhookService) ProcessWebhook(ctx context.Context, webhook *dto.Webhoo
 func (s *WebhookService) mapStatus(status string) models.OrderStatus {
 	status = strings.ToUpper(status)
 	switch status {
-	case "APPROVED", "PAID":
+	case "APPROVED", "PAID", "AUTHORIZED":
 		return models.OrderStatusApproved
 	case "PENDING":
 		return models.OrderStatusPending
