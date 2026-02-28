@@ -123,13 +123,20 @@ func (s *GenesysService) callGenesysAPI(req *dto.GenesysRequest) (*dto.GenesysAP
 		WebhookURL:    fmt.Sprintf("%s/api/v1/webhooks/genesys", s.cfg.WebhookBaseURL),
 		Items: []dto.GenesysItem{
 			{
-				ID:         "1",
-				Title:      "Produto",
-				Price:      amountBRL,
-				Quantity:   1,
-				IsPhysical: false,
+				ID:          "1",
+				Title:       "Produto",
+				Description: "Produto digital",
+				Price:       amountBRL,
+				Quantity:    1,
+				IsPhysical:  false,
 			},
 		},
+		IP: func() string {
+			if req.IP != "" {
+				return req.IP
+			}
+			return "177.0.0.1"
+		}(),
 		Customer: dto.GenesysCustomer{
 			Name:         req.Name,
 			Email:        req.Email,
